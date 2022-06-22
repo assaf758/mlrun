@@ -302,7 +302,7 @@ def get_or_create_project(
             clone=clone,
             user_project=user_project,
         )
-        logger.info(f"loaded project {name} from MLRun DB")
+        logger.info(f"loaded project {project.metadata.name} from MLRun DB")
         return project
 
     except mlrun.errors.MLRunNotFoundError:
@@ -319,7 +319,7 @@ def get_or_create_project(
                 clone=clone,
                 user_project=user_project,
             )
-            logger.info(f"loaded project {name} from {url} or context")
+            logger.info(f"loaded project {project.metadata.name} from {url} or context")
         else:
             # create a new project
             project = new_project(
@@ -331,7 +331,7 @@ def get_or_create_project(
                 secrets=secrets,
                 subpath=subpath,
             )
-            logger.info(f"created and saved project {name}")
+            logger.info(f"created and saved project {project.metadata.name}")
         project.save_to_db()
         return project
 
