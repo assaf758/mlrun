@@ -59,10 +59,10 @@ Read more in the MLRun documentation, including:
    - [Installation and setup guide](https://docs.mlrun.org/en/latest/install.html)
 - Concepts
    - [Projects](https://docs.mlrun.org/en/latest/projects/project.html)
-   - [MLRun serverless functions](https://docs.mlrun.org/en/latest/concepts/functions-concepts.html)
-   - [Data stores and data items](https://docs.mlrun.org/en/latest/concepts/data-feature-store.html)
+   - [MLRun serverless functions](https://docs.mlrun.org/en/latest/runtimes/functions.html)
+   - [Data stores and data items](https://docs.mlrun.org/en/latest/concepts/data.html)
    - [Feature store](https://docs.mlrun.org/en/latest/feature-store/feature-store.html)
-   - [Runs, functions, and workflows](https://docs.mlrun.org/en/latest/concepts/runs-experiments-workflows.html)
+   - [Runs, functions, and workflows](https://docs.mlrun.org/en/latest/concepts/runs-workflows.html)
    - [Artifacts and models](https://docs.mlrun.org/en/latest/store/artifacts.html)
    - [Deployment and monitoring](https://docs.mlrun.org/en/latest/concepts/deployment-monitoring.html)
 - Working with data
