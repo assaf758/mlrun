@@ -28,6 +28,7 @@ import mlrun
 import tests.system.base
 from mlrun import feature_store as fstore
 from mlrun.datastore.sources import KafkaSource
+from mlrun.datastore.targets import ParquetTarget
 
 
 @tests.system.base.TestMLRunSystem.skip_test_if_env_not_configured
@@ -316,9 +317,12 @@ class TestNuclioRuntimeWithKafka(tests.system.base.TestMLRunSystem):
 
         # need to set full_event = True since we need to change event key in the Map step
         stocks_set.graph.to("MyMap", full_event=True)
+
+        target = ParquetTarget(flush_after_seconds = 10)
         fstore.ingest(
             featureset=stocks_set,
             source=stocks_df[0:row_divide],
+            targets=[target],
             infer_options=fstore.InferOptions.default(),
         )
         stocks_set.save()
@@ -352,7 +356,7 @@ class TestNuclioRuntimeWithKafka(tests.system.base.TestMLRunSystem):
         kafka_consumer, kafka_producer = kafka_fixture
         self.produce_kafka_helper(kafka_producer, stocks_df[row_divide:])
 
-        time.sleep(90)  # wait for ingestion-service parquet to be written
+        time.sleep(30)  # wait for ingestion-service parquet to be written
 
         vec = fstore.FeatureVector("test-vec", [f"{fs_name}.*"])
         resp = fstore.get_offline_features(feature_vector=vec, with_indexes=True)
