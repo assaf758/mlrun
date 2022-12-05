@@ -314,7 +314,7 @@ class TestNuclioRuntimeWithKafka(tests.system.base.TestMLRunSystem):
         fs_name = "stocks_set"
         stocks_set = fstore.FeatureSet(fs_name, entities=[fstore.Entity("ticker")])
 
-        # need to set full_event = True since we need to change event md (key) in the Map step
+        # need to set full_event = True since we need to change event key in the Map step
         stocks_set.graph.to("MyMap", full_event=True)
         fstore.ingest(
             featureset=stocks_set,
@@ -336,7 +336,7 @@ class TestNuclioRuntimeWithKafka(tests.system.base.TestMLRunSystem):
             # TODO - remove reference to assaf758/mlrun (once mlrun/mlrun is updated with this fix)
             image="assaf758/mlrun:ML-2836",
             requirements=["avro"],
-            filename="/home/assafb/iguazio/mlrun/tests/system/runtimes/map_avro.py",
+            filename="tests/system/runtimes/map_avro.py",
         )
 
         run_config = fstore.RunConfig(local=False, function=func).apply(
