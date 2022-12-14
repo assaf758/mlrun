@@ -27,6 +27,7 @@ from mlrun.api.schemas import SecurityContextEnrichmentModes
 from mlrun.db.httpdb import HTTPRunDB
 
 namespace_env_key = f"{mlconf.env_prefix}NAMESPACE"
+nosql_env_key = f"{mlconf.env_prefix}FEATURE_STORE__DATA_PREFIXES__NOSQL"
 default_function_pod_resources_env_key = (
     f"{mlconf.env_prefix}DEFAULT_FUNCTION_POD_RESOURCES__"
 )
@@ -111,17 +112,20 @@ def test_env(config):
 def test_env_override(config):
     env_ns = "daffy"
     config_ns = "bugs"
+    env_nosql = ""
 
     config_path = create_yaml_config(namespace=config_ns)
     env = {
         mlconf.env_file_key: config_path,
         namespace_env_key: env_ns,
+        nosql_env_key: env_nosql
     }
 
     with patch_env(env):
         mlconf.config.reload()
 
     assert config.namespace == env_ns, "env did not override"
+    assert config.feature_store.data_prefixes.nosql == env_nosql
 
 
 def test_decode_base64_config_and_load_to_object():
