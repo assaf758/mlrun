@@ -134,6 +134,8 @@ class V3ioStore(DataStore):
     def _put(self, key, data, max_chunk_size: int = ONE_GB):
         """helper function for put method, allows for controlling max_chunk_size in testing"""
         buffer_size = len(data)  # in bytes
+        if isinstance(data, str):
+            data=data.encode('utf8')
         if buffer_size <= ONE_MB:
             http_put(self.url + self._join(key), data, self.headers, None)
             return

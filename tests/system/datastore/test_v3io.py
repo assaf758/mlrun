@@ -100,6 +100,18 @@ class TestV3ioDataStore(TestMLRunSystem):
         finally:
             data_item.delete()
 
+    def test_v3io_str_with_non_ascii(self):
+        string_data = "hello 良"
+        object_path = "/bigdata/test_v3io_str_with_non_ascii_data"
+        v3io_object_url = "v3io://" + object_path
+        data_item = mlrun.datastore.store_manager.object(v3io_object_url)
+        try:
+            data_item.put(string_data)
+            returned_buffer = data_item.get().decode('utf8')
+            assert returned_buffer == string_data
+        finally:
+            data_item.delete()
+
     def test_list_dir(self):
         dir_base_path = "/bigdata/test_base_dir/"
         v3io_dir_url = "v3io://" + dir_base_path
