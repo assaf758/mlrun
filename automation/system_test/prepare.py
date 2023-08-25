@@ -394,7 +394,7 @@ class SystemTestPreparer:
     def _enrich_env(self):
         devutils_outputs = self._get_devutils_status()
         if "redis" in devutils_outputs:
-            self._logger.log("debug", "Enriching env with redis info")
+            self._logger.log("info", f"Enriching env with redis info with {devutils_outputs}")
             # uncomment when url is accessible from outside the cluster
             # self._env_config["MLRUN_REDIS__URL"] = f"redis://{devutils_outputs['redis']['app_url']}"
             # self._env_config["REDIS_USER"] = devutils_outputs["redis"]["username"]
