@@ -46,6 +46,32 @@ on:
         options:
           - 'true'
           - 'false'
+    workflow_call:
+      inputs:
+        pr_number:
+          type: string
+          required: false
+          default: ''
+        pytest_markers:
+          type: string
+          required: false
+          default: 'not enterprise and smoke'
+        clean_resources_in_teardown:
+          type: string
+          required: false
+          default: 'true'
+        debug_enabled:
+          type: string
+          required: false
+          default: 'false'
+        build_from_pr:
+          type: boolean
+          required: false
+          default: false
+      outputs:
+        test_outcome:
+          description: 'Outcome of the system tests job (success|failure)'
+          value: ${{ jobs.run-system-tests-opensource-ci.outputs.test_outcome }}
 
 env:
   NAMESPACE: mlrun
@@ -174,6 +200,8 @@ jobs:
     runs-on:
       group: mlrun-ce
     needs: [prepare-inputs, build-mlrun]
+    outputs:
+      test_outcome: ${{ steps.system-tests.outcome }}
     steps:
     - uses: actions/checkout@v6
 
