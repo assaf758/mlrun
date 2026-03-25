@@ -278,14 +278,23 @@ Functional end-to-end testing requires a live GitHub environment, so each task e
 
   Run: `grep -n "github.event.inputs" .github/workflows/system-tests-opensource.yml`
 
-  Expected — exactly these lines (note: lines containing `github.event_name` or shell variable refs like `$PR_NUMBER` do NOT match this grep):
+  Expected — these lines (note: lines containing `github.event_name` or shell variable refs like `$PR_NUMBER` do NOT match this grep):
   ```
   113:          PR_NUMBER: ${{ github.event.inputs.pr_number }}
   147:          INPUT_CLEAN_RESOURCES_IN_TEARDOWN: ${{ github.event.inputs.clean_resources_in_teardown || env.DEFAULT_CLEAN_RESOURCES_IN_TEARDOWN }}
   148:          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+  155:      if: github.event_name == 'pull_request' || github.event.inputs.pr_number != ''
   258:        if: ${{ (github.event.inputs.debug_enabled || env.DEFAULT_DEBUG_ENABLED) == 'true' }}
   547:        PYTEST_MARKERS: ${{ github.event.inputs.pytest_markers || env.DEFAULT_PYTEST_MARKERS }}
+  552: (inside Label PR step — to be deleted in Task 6)
+  557: (inside Label PR step — to be deleted in Task 6)
   ```
+
+  **Important:** Lines ~155, ~552, ~557 appear in the grep output but are addressed in Tasks 5 and 6, not here:
+  - Line ~155 (`build-mlrun` `if:` condition) → Task 5
+  - Lines ~552, ~557 (inside `Label PR with system test result` step) → Task 6 (step deleted entirely)
+
+  Task 4 only changes lines 113, 147, 148, 258, 547.
 
   Exact line numbers may shift if the file was modified; the content match is what matters.
 
@@ -337,11 +346,18 @@ Functional end-to-end testing requires a live GitHub environment, so each task e
         if: ${{ (inputs.debug_enabled || env.DEFAULT_DEBUG_ENABLED) == 'true' }}
   ```
 
-- [ ] **Step 5: Verify no remaining `github.event.inputs` references**
+- [ ] **Step 5: Verify Task 4 changes are applied**
 
   Run: `grep -n "github.event.inputs" .github/workflows/system-tests-opensource.yml`
 
-  Expected: no output. (References to `github.event_name` and `github.event.pull_request.*` are fine — only `github.event.inputs.*` must be gone.)
+  Expected: only the lines that belong to Tasks 5 and 6 remain — approximately:
+  ```
+  155: (build-mlrun if condition — addressed in Task 5)
+  552: (Label PR step — deleted in Task 6)
+  557: (Label PR step — deleted in Task 6)
+  ```
+
+  Lines 113, 147, 148, 258, 547 must NOT appear. If any of them still appear, re-apply the relevant step above.
 
 - [ ] **Step 6: YAML syntax check**
 
