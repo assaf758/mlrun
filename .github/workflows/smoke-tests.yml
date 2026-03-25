@@ -1,0 +1,164 @@
+# Copyright 2026 Iguazio
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Smoke Tests
+
+permissions:
+  contents: read
+  pull-requests: write
+  packages: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to target for labeling (and optionally to build from)'
+        required: false
+        default: ''
+      build_from_pr:
+        description: 'Build Docker images and run tests from the PR branch (vs upstream). Requires pr_number.'
+        required: false
+        default: false
+        type: boolean
+      clean_resources_in_teardown:
+        description: 'Clean test resources upon teardown'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      debug_enabled:
+        description: 'Allow SSH debugging'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  run-smoke-tests:
+    name: Run Smoke Tests
+    uses: ./.github/workflows/system-tests-opensource.yml
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      pytest_markers: 'not enterprise and smoke'
+      build_from_pr: ${{ inputs.build_from_pr }}
+      clean_resources_in_teardown: ${{ inputs.clean_resources_in_teardown }}
+      debug_enabled: ${{ inputs.debug_enabled }}
+    secrets: inherit
+
+  post-results:
+    name: Post smoke test results
+    runs-on: ubuntu-latest
+    if: always() && inputs.pr_number != ''
+    needs: run-smoke-tests
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Determine label and outcome
+        id: outcome
+        run: |
+          OUTCOME="${{ needs.run-smoke-tests.outputs.test_outcome }}"
+          BUILD_FROM_PR="${{ inputs.build_from_pr }}"
+
+          if [ "$OUTCOME" = "success" ]; then
+            STATUS="Pass"
+            EMOJI="✅"
+            COLOR="0e8a16"
+          else
+            STATUS="Fail"
+            EMOJI="❌"
+            COLOR="d93f0b"
+          fi
+
+          if [ "$BUILD_FROM_PR" = "true" ]; then
+            LABEL="Smoke tests: ${STATUS} (tests from pr)"
+            SOURCE="PR branch"
+          else
+            LABEL="Smoke tests: ${STATUS}"
+            SOURCE="upstream"
+          fi
+
+          echo "label=${LABEL}"   >> $GITHUB_OUTPUT
+          echo "color=${COLOR}"   >> $GITHUB_OUTPUT
+          echo "emoji=${EMOJI}"   >> $GITHUB_OUTPUT
+          echo "status=${STATUS}" >> $GITHUB_OUTPUT
+          echo "source=${SOURCE}" >> $GITHUB_OUTPUT
+
+      - name: Set label on PR
+        run: |
+          PR="${{ inputs.pr_number }}"
+          API_URL="https://api.github.com/repos/${{ github.repository }}/issues/${PR}/labels"
+          REPO_LABELS_URL="https://api.github.com/repos/${{ github.repository }}/labels"
+          LABEL="${{ steps.outcome.outputs.label }}"
+          COLOR="${{ steps.outcome.outputs.color }}"
+
+          ENCODED_LABEL=$(echo "${LABEL}" | sed 's/ /%20/g; s/:/%3A/g; s/(/%28/g; s/)/%29/g')
+
+          # Ensure label exists in the repo (create if absent, update color if present)
+          curl -sS -X PATCH \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{\"color\":\"${COLOR}\"}" \
+            "${REPO_LABELS_URL}/${ENCODED_LABEL}" || \
+          curl -sS -X POST \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{\"name\":\"${LABEL}\",\"color\":\"${COLOR}\"}" \
+            "${REPO_LABELS_URL}"
+
+          # Remove ALL smoke Pass/Fail labels (both variants) and Unknown before adding the correct one.
+          # This prevents stale labels when build_from_pr changes between runs.
+          for stale in \
+            "Smoke%20tests%3A%20Pass" \
+            "Smoke%20tests%3A%20Fail" \
+            "Smoke%20tests%3A%20Pass%20%28tests%20from%20pr%29" \
+            "Smoke%20tests%3A%20Fail%20%28tests%20from%20pr%29" \
+            "Smoke%20tests%3A%20Unknown"; do
+            curl -sS -X DELETE \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "${API_URL}/${stale}" || true
+          done
+
+          # Add the correct label
+          curl -sS -X POST \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{\"labels\":[\"${LABEL}\"]}" \
+            "${API_URL}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build comment body
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          # Single-quote heredoc prevents shell from expanding ${{ }} (already resolved by GHA).
+          # RUN_URL is a shell variable so it must be injected via sed.
+          cat > comment.md <<'HEREDOC'
+## Smoke Tests: ${{ steps.outcome.outputs.emoji }} ${{ steps.outcome.outputs.status }}
+**Source:** ${{ steps.outcome.outputs.source }}
+**Run:** [View workflow run](RUN_URL_PLACEHOLDER)
+HEREDOC
+          sed -i "s|RUN_URL_PLACEHOLDER|${RUN_URL}|g" comment.md
+
+      - name: Post comment to PR
+        uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b
+        with:
+          pr-number: ${{ inputs.pr_number }}
+          file-path: comment.md
+          comment-tag: smoke_test_result
+          mode: recreate
