@@ -79,7 +79,9 @@ The open-source smoke test GitHub Actions workflow (`system-tests-opensource.yml
 ```yaml
 on:
   workflow_dispatch:
-    inputs: { ... }  # unchanged
+    inputs: { ... }  # unchanged — build_from_pr intentionally NOT added here.
+                     # Direct dispatch is for debugging only; PR-code testing
+                     # must go through smoke-tests.yml to ensure labels are set correctly.
   workflow_call:
     inputs:
       pr_number:
@@ -134,6 +136,19 @@ to:
 if: inputs.build_from_pr == true
 ```
 
+**`needs: build-mlrun` on the test job:** The existing `run-system-tests-opensource-ci` job declares `needs: [prepare-inputs, build-mlrun]`. When `build-mlrun` is skipped (i.e., `build_from_pr=false`), GitHub Actions will block the dependent job unless it explicitly handles the skipped state. The `needs:` list must be updated to only include `build-mlrun` conditionally, or the job must add:
+```yaml
+if: always() && needs.prepare-inputs.result == 'success' && (needs.build-mlrun.result == 'success' || needs.build-mlrun.result == 'skipped')
+```
+
+**`github.event.inputs.*` in step bodies:** Under `workflow_call`, `github.event.inputs` is not populated — all inputs must be read via `inputs.*`. The following references inside `system-tests-opensource.yml` step bodies must be updated:
+- `prepare-inputs` job: `github.event.inputs.pr_number` (lines 85, 113, 148) → `inputs.pr_number`
+- `prepare-inputs` job: `github.event.inputs.clean_resources_in_teardown` (line 147) → `inputs.clean_resources_in_teardown`
+- `run-system-tests-opensource-ci` job: `github.event.inputs.pytest_markers` (line 547 env block) → `inputs.pytest_markers`
+- Any other `github.event.inputs.*` references in step bodies or `env:` blocks
+
+The `prepare-inputs` step already uses `env:` vars (`PR_NUMBER`, `INPUT_CLEAN_RESOURCES_IN_TEARDOWN`) that are set from `github.event.inputs.*`. These env assignments must be updated to use `inputs.*` instead.
+
 The `run-system-tests-opensource-ci` job adds a conditional checkout:
 ```yaml
 - uses: actions/checkout@v6
@@ -146,9 +161,23 @@ The `run-system-tests-opensource-ci` job adds a conditional checkout:
     fetch-depth: 0
 ```
 
-The `prepare-inputs` job's `mlrun_version_specifier` logic:
-- `build_from_pr=true` + `pr_number` set → `refs/pull/{PR_NUM}/merge`
-- `build_from_pr=false` → upstream commit hash (no PR ref)
+**`mlrun_version_specifier` logic update in `prepare-inputs`:** The current script unconditionally sets the PR ref when `PR_NUM` is non-empty. It must be changed to also require `build_from_pr=true`:
+
+```bash
+# Before: sets PR ref whenever PR_NUM is set
+export mlrun_version_specifier=$mlrun_hash
+if [ -n "$PR_NUM" ]; then
+  mlrun_version_specifier="refs/pull/${PR_NUM}/merge"
+fi
+
+# After: sets PR ref only when both PR_NUM is set AND build_from_pr=true
+export mlrun_version_specifier=$mlrun_hash
+if [ -n "$PR_NUM" ] && [ "$BUILD_FROM_PR" = "true" ]; then
+  mlrun_version_specifier="refs/pull/${PR_NUM}/merge"
+fi
+```
+
+Where `BUILD_FROM_PR` is passed as an env var from `inputs.build_from_pr`.
 
 **Remove entirely:** The `Label PR with system test result` step.
 
@@ -269,15 +298,20 @@ jobs:
             -d "{\"name\":\"${LABEL}\",\"color\":\"${COLOR}\"}" \
             "${REPO_LABELS_URL}"
 
-          # Remove opposite label, Unknown label
-          curl -sS -X DELETE \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "${API_URL}/${ENCODED_REMOVE}" || true
-          curl -sS -X DELETE \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "${API_URL}/Smoke%20tests%3A%20Unknown" || true
+          # Remove ALL smoke Pass/Fail labels (both variants) and Unknown
+          # This handles the case where a previous run used a different build_from_pr setting,
+          # leaving a stale label of the opposite variant on the PR.
+          for stale in \
+            "Smoke%20tests%3A%20Pass" \
+            "Smoke%20tests%3A%20Fail" \
+            "Smoke%20tests%3A%20Pass%20%28tests%20from%20pr%29" \
+            "Smoke%20tests%3A%20Fail%20%28tests%20from%20pr%29" \
+            "Smoke%20tests%3A%20Unknown"; do
+            curl -sS -X DELETE \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              "${API_URL}/${stale}" || true
+          done
 
           # Add correct label
           curl -sS -X POST \
@@ -292,11 +326,14 @@ jobs:
         id: comment
         run: |
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          cat > comment.md <<EOF
-          ## Smoke Tests: ${{ steps.outcome.outputs.emoji }} ${{ steps.outcome.outputs.status }}
-          **Source:** ${{ steps.outcome.outputs.source }}
-          **Run:** [View workflow run](${RUN_URL})
-          EOF
+          # Note: heredoc content must not be indented to avoid literal leading spaces in the file
+          cat > comment.md <<'HEREDOC'
+## Smoke Tests: ${{ steps.outcome.outputs.emoji }} ${{ steps.outcome.outputs.status }}
+**Source:** ${{ steps.outcome.outputs.source }}
+**Run:** [View workflow run](RUN_URL_PLACEHOLDER)
+HEREDOC
+          # Replace placeholder since single-quote heredoc prevents expansion
+          sed -i "s|RUN_URL_PLACEHOLDER|${RUN_URL}|g" comment.md
 
       - name: Post comment to PR
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b
@@ -384,10 +421,15 @@ Remove the `label-oss-system-test-unknown` job entirely. It is replaced by `set-
 
 ### `build-internal.yaml` fix
 
-Replace event-level input references with workflow_call input references in both checkout steps:
+Replace all `github.event.inputs.pr_number` references with `inputs.pr_number`. There are four locations:
+
+1. **Checkout step 1** (line 103): `if: github.event.inputs.pr_number == ''` → `if: inputs.pr_number == ''`
+2. **Checkout step 2** (line 106): `if: github.event.inputs.pr_number != ''` and `ref: refs/pull/${{ github.event.inputs.pr_number }}/merge` → use `inputs.pr_number`
+3. **Docker login (quay.io)** (line 176): `if: github.event.inputs.pr_number == ''` → `if: inputs.pr_number == ''`
+4. **Docker login (docker.com)** (line 184): `if: github.event.inputs.pr_number == ''` → `if: inputs.pr_number == ''`
 
 ```yaml
-# Before
+# Before (all four locations use github.event.inputs.pr_number)
 - uses: actions/checkout@v6
   if: github.event.inputs.pr_number == ''
 
@@ -397,7 +439,15 @@ Replace event-level input references with workflow_call input references in both
     fetch-depth: 0
     ref: refs/pull/${{ github.event.inputs.pr_number }}/merge
 
-# After
+- name: Docker login (quay.io)
+  if: github.event.inputs.pr_number == ''
+  ...
+
+- name: Docker login (docker.com)
+  if: github.event.inputs.pr_number == ''
+  ...
+
+# After (all four use inputs.pr_number)
 - uses: actions/checkout@v6
   if: inputs.pr_number == ''
 
@@ -406,9 +456,15 @@ Replace event-level input references with workflow_call input references in both
   with:
     fetch-depth: 0
     ref: refs/pull/${{ inputs.pr_number }}/merge
-```
 
-Also remove the `quay.io` Docker login step condition fix — it currently uses `github.event.inputs.pr_number == ''`; update to `inputs.pr_number == ''`.
+- name: Docker login (quay.io)
+  if: inputs.pr_number == ''
+  ...
+
+- name: Docker login (docker.com)
+  if: inputs.pr_number == ''
+  ...
+```
 
 ---
 
@@ -430,6 +486,7 @@ Also remove the `quay.io` Docker login step condition fix — it currently uses 
 - **`build_from_pr=true` without `pr_number`:** Should be treated as a configuration error. `prepare-inputs` will produce an upstream hash for `mlrun_hash` (no PR to reference) — the build step will run but check out the default branch (since `inputs.pr_number` is empty). A warning or explicit guard can be added.
 - **CI triggered by `push` (not `pull_request`):** `set-smoke-label-unknown.yml` guards with `if: github.event.workflow_run.event == 'pull_request'` — label is not set for push-only CI runs.
 - **Stale Unknown label:** If smoke tests are never run after a commit push, the PR will permanently show `Unknown`. This is acceptable — it correctly signals that smoke tests have not been run for the latest code.
+- **Smoke test run cancelled:** If `smoke-tests.yml` is cancelled mid-run, `run-smoke-tests` outputs an empty `test_outcome`. The `post-results` job will treat this as a failure and set `Smoke tests: Fail`. This is acceptable — a cancelled run did not produce a passing result and the label should not remain `Pass`.
 - **`workflow_run.pull_requests` empty (fork PRs):** GitHub does not populate `pull_requests` for forks. In that case, `set-smoke-label-unknown.yml` exits early with no error.
 
 ---
