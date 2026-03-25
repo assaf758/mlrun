@@ -100,13 +100,13 @@ jobs:
           docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine sh -c "rm -rf /workspace/server/common/proto/build /workspace/server/go/proto/build" || true
         fi       
     - uses: actions/checkout@v6
-      if: github.event.inputs.pr_number == ''
+      if: inputs.pr_number == ''
 
     - uses: actions/checkout@v6
-      if: github.event.inputs.pr_number != ''
+      if: inputs.pr_number != ''
       with:
         fetch-depth: 0
-        ref: refs/pull/${{ github.event.inputs.pr_number }}/merge
+        ref: refs/pull/${{ inputs.pr_number }}/merge
 
     # since github-actions gives us 14G only, and fills it up with some garbage
     - name: Freeing up disk space
@@ -173,7 +173,7 @@ jobs:
 
     - name: Docker login (quay.io)
       continue-on-error: true
-      if: github.event.inputs.pr_number == ''
+      if: inputs.pr_number == ''
       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # 4.0.0
       with:
         registry: quay.io
@@ -181,7 +181,7 @@ jobs:
         password: ${{ secrets.QUAY_IO_DOCKER_REGISTRY_PASSWORD }}
 
     - name: Docker login (docker.com)
-      if: github.event.inputs.pr_number == ''
+      if: inputs.pr_number == ''
       continue-on-error: true
       uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # 4.0.0
       with:
