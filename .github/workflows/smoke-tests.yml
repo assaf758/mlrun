@@ -146,14 +146,11 @@ jobs:
       - name: Build comment body
         run: |
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          # Single-quote heredoc prevents shell from expanding ${{ }} (already resolved by GHA).
-          # RUN_URL is a shell variable so it must be injected via sed.
-          cat > comment.md <<'HEREDOC'
-## Smoke Tests: ${{ steps.outcome.outputs.emoji }} ${{ steps.outcome.outputs.status }}
-**Source:** ${{ steps.outcome.outputs.source }}
-**Run:** [View workflow run](RUN_URL_PLACEHOLDER)
-HEREDOC
-          sed -i "s|RUN_URL_PLACEHOLDER|${RUN_URL}|g" comment.md
+          {
+            echo "## Smoke Tests: ${{ steps.outcome.outputs.emoji }} ${{ steps.outcome.outputs.status }}"
+            echo "**Source:** ${{ steps.outcome.outputs.source }}"
+            echo "**Run:** [View workflow run](${RUN_URL})"
+          } > comment.md
 
       - name: Post comment to PR
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b
