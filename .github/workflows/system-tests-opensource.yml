@@ -68,11 +68,6 @@ on:
           type: boolean
           required: false
           default: false
-      outputs:
-        test_outcome:
-          description: 'Outcome of the system tests job (success|failure)'
-          value: ${{ jobs.run-system-tests-opensource-ci.outputs.test_outcome }}
-
 env:
   NAMESPACE: mlrun
   MLRUN_API_NODE_PORT: 30070
@@ -202,8 +197,6 @@ jobs:
     runs-on:
       group: mlrun-ce
     needs: [prepare-inputs, build-mlrun]
-    outputs:
-      test_outcome: ${{ steps.system-tests.outcome }}
     if: >-
       always() &&
       needs.prepare-inputs.result == 'success' &&

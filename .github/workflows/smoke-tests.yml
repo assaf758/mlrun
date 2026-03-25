@@ -71,7 +71,7 @@ jobs:
       - name: Determine label and outcome
         id: outcome
         run: |
-          OUTCOME="${{ needs.run-smoke-tests.outputs.test_outcome }}"
+          OUTCOME="${{ needs.run-smoke-tests.result }}"
           BUILD_FROM_PR="${{ inputs.build_from_pr }}"
 
           if [ "$OUTCOME" = "success" ]; then
