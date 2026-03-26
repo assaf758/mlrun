@@ -26,8 +26,8 @@ on:
         description: 'PR number to target for labeling (and optionally to build from)'
         required: false
         default: ''
-      build_from_pr:
-        description: 'Build Docker images and run tests from the PR branch (vs upstream). Requires pr_number.'
+      tests_from_pr:
+        description: 'Run tests from the PR branch code. Docker images are always built from the PR when pr_number is set.'
         required: false
         default: false
         type: boolean
@@ -55,7 +55,7 @@ jobs:
     with:
       pr_number: ${{ inputs.pr_number }}
       pytest_markers: 'not enterprise and smoke'
-      build_from_pr: ${{ inputs.build_from_pr }}
+      tests_from_pr: ${{ inputs.tests_from_pr }}
       clean_resources_in_teardown: ${{ inputs.clean_resources_in_teardown }}
       debug_enabled: ${{ inputs.debug_enabled }}
     secrets: inherit
@@ -72,7 +72,7 @@ jobs:
         id: outcome
         run: |
           OUTCOME="${{ needs.run-smoke-tests.result }}"
-          BUILD_FROM_PR="${{ inputs.build_from_pr }}"
+          TESTS_FROM_PR="${{ inputs.tests_from_pr }}"
 
           if [ "$OUTCOME" = "success" ]; then
             STATUS="Pass"
@@ -84,7 +84,7 @@ jobs:
             COLOR="d93f0b"
           fi
 
-          if [ "$BUILD_FROM_PR" = "true" ]; then
+          if [ "$TESTS_FROM_PR" = "true" ]; then
             LABEL="Smoke tests: ${STATUS} (tests from pr)"
             SOURCE="PR branch"
           else
@@ -121,7 +121,7 @@ jobs:
             "${REPO_LABELS_URL}"
 
           # Remove ALL smoke Pass/Fail labels (both variants) and Unknown before adding the correct one.
-          # This prevents stale labels when build_from_pr changes between runs.
+          # This prevents stale labels when tests_from_pr changes between runs.
           for stale in \
             "Smoke%20tests%3A%20Pass" \
             "Smoke%20tests%3A%20Fail" \

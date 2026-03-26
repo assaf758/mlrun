@@ -64,7 +64,7 @@ on:
           type: string
           required: false
           default: 'false'
-        build_from_pr:
+        tests_from_pr:
           type: boolean
           required: false
           default: false
@@ -153,7 +153,7 @@ jobs:
           fi
           
           export mlrun_version_specifier=$mlrun_hash
-          if [ -n "$PR_NUM" ] && [ "$BUILD_FROM_PR" = "true" ]; then
+          if [ -n "$PR_NUM" ]; then
             mlrun_version_specifier="refs/pull/${PR_NUM}/merge"
           fi
           echo "mlrun_version_specifier=$mlrun_version_specifier" >> $GITHUB_OUTPUT
@@ -167,14 +167,13 @@ jobs:
         env:
           INPUT_CLEAN_RESOURCES_IN_TEARDOWN: ${{ inputs.clean_resources_in_teardown || env.DEFAULT_CLEAN_RESOURCES_IN_TEARDOWN }}
           PR_NUMBER: ${{ inputs.pr_number }}
-          BUILD_FROM_PR: ${{ inputs.build_from_pr }}
 
       - name: Print mlrun_hash value
         run: |
           echo "mlrun_hash value: ${{ steps.computed_params.outputs.mlrun_hash }}"
 
   build-mlrun:
-    if: inputs.build_from_pr == true
+    if: inputs.pr_number != ''
     name: Build MLRun
     uses: ./.github/workflows/build-internal.yaml
     needs: prepare-inputs
@@ -203,10 +202,10 @@ jobs:
       (needs.build-mlrun.result == 'success' || needs.build-mlrun.result == 'skipped')
     steps:
     - uses: actions/checkout@v6
-      if: inputs.build_from_pr != true
+      if: inputs.tests_from_pr != true
 
     - uses: actions/checkout@v6
-      if: inputs.build_from_pr == true
+      if: inputs.tests_from_pr == true
       with:
         ref: refs/pull/${{ inputs.pr_number }}/merge
         fetch-depth: 0
