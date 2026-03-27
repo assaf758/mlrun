@@ -680,6 +680,7 @@ async def test_list_and_get_project_summaries(
                 {},
                 {},
                 {},
+                {},
             )
         )
     )
@@ -749,6 +750,7 @@ async def test_list_project_summaries_different_installation_modes(
     framework.utils.singletons.db.SQLDB._calculate_alert_activations_counters = (
         unittest.mock.Mock(
             return_value=(
+                {},
                 {},
                 {},
                 {},
@@ -884,6 +886,7 @@ async def test_list_project_summaries_filters_by_project_permissions(
                 {},
                 {},
                 {},
+                {},
             )
         )
     )
@@ -905,6 +908,7 @@ async def test_list_project_summaries_filters_by_project_permissions(
     returned_names = [s.name for s in project_summaries_output.project_summaries]
     assert returned_names == [allowed_project]
     assert forbidden_project not in returned_names
+
 
 
 def test_delete_project_deletion_strategy_check(
