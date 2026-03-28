@@ -458,8 +458,8 @@ jobs:
             # Wait for all pods to be ready, on K3S the helm wait does not work because services will never get an IP
             echo "Waiting for all pods in namespace ${NAMESPACE} to be ready..."
 
-            # Wait up to 30 minutes (1800 seconds) for all pods to be ready.
-            timeout=1800
+            # Wait up to 40 minutes (2400 seconds) for all pods to be ready.
+            timeout=2400
             interval=60
             elapsed=0
 
