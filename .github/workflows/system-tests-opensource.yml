@@ -420,7 +420,7 @@ jobs:
     - name: Install MLRun CE helm chart
       uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
       with:
-        timeout_minutes: 45
+        timeout_minutes: 50
         max_attempts: 1
         retry_wait_seconds: 120
         command: |
