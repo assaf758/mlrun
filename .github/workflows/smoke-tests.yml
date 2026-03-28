@@ -26,11 +26,6 @@ on:
         description: 'PR number to target for labeling (and optionally to build from)'
         required: false
         default: ''
-      tests_from_pr:
-        description: 'Run tests from the PR branch code. Docker images are always built from the PR when pr_number is set.'
-        required: false
-        default: false
-        type: boolean
       clean_resources_in_teardown:
         description: 'Clean test resources upon teardown'
         required: true
@@ -55,7 +50,6 @@ jobs:
     with:
       pr_number: ${{ inputs.pr_number }}
       pytest_markers: 'not enterprise and smoke'
-      tests_from_pr: ${{ inputs.tests_from_pr }}
       clean_resources_in_teardown: ${{ inputs.clean_resources_in_teardown }}
       debug_enabled: ${{ inputs.debug_enabled }}
     secrets: inherit
@@ -72,7 +66,6 @@ jobs:
         id: outcome
         run: |
           OUTCOME="${{ needs.run-smoke-tests.result }}"
-          TESTS_FROM_PR="${{ inputs.tests_from_pr }}"
 
           if [ "$OUTCOME" = "success" ]; then
             STATUS="Pass"
@@ -84,13 +77,8 @@ jobs:
             COLOR="d93f0b"
           fi
 
-          if [ "$TESTS_FROM_PR" = "true" ]; then
-            LABEL="Smoke tests: ${STATUS} (tests from pr)"
-            SOURCE="PR branch"
-          else
-            LABEL="Smoke tests: ${STATUS}"
-            SOURCE="upstream"
-          fi
+          LABEL="Smoke tests: ${STATUS}"
+          SOURCE="PR branch"
 
           echo "label=${LABEL}"   >> $GITHUB_OUTPUT
           echo "color=${COLOR}"   >> $GITHUB_OUTPUT
@@ -120,8 +108,7 @@ jobs:
             -d "{\"name\":\"${LABEL}\",\"color\":\"${COLOR}\"}" \
             "${REPO_LABELS_URL}"
 
-          # Remove ALL smoke Pass/Fail labels (both variants) and Unknown before adding the correct one.
-          # This prevents stale labels when tests_from_pr changes between runs.
+          # Remove any stale smoke labels before adding the correct one.
           for stale in \
             "Smoke%20tests%3A%20Pass" \
             "Smoke%20tests%3A%20Fail" \

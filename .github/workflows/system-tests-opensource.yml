@@ -64,10 +64,6 @@ on:
           type: string
           required: false
           default: 'false'
-        tests_from_pr:
-          type: boolean
-          required: false
-          default: false
 env:
   NAMESPACE: mlrun
   MLRUN_API_NODE_PORT: 30070
@@ -202,10 +198,10 @@ jobs:
       (needs.build-mlrun.result == 'success' || needs.build-mlrun.result == 'skipped')
     steps:
     - uses: actions/checkout@v6
-      if: inputs.tests_from_pr != true
+      if: inputs.pr_number == ''
 
     - uses: actions/checkout@v6
-      if: inputs.tests_from_pr == true
+      if: inputs.pr_number != ''
       with:
         ref: refs/pull/${{ inputs.pr_number }}/merge
         fetch-depth: 0
