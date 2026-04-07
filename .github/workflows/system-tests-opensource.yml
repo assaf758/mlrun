@@ -46,7 +46,7 @@ on:
         options:
           - 'true'
           - 'false'
-    workflow_call:
+   workflow_call:
       inputs:
         pr_number:
           type: string
