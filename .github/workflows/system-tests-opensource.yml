@@ -570,6 +570,17 @@ jobs:
         export MLRUN_VERSION="${{ needs.prepare-inputs.outputs.mlrun_version }}"
         export MLRUN_IMAGES_TAG="${{ needs.prepare-inputs.outputs.mlrun_docker_tag }}"
 
+        # Set default function images on the client side to match the server overrides.
+        # This ensures tests that reference mlrun.mlconf.function_defaults.image_by_kind
+        # get the correct fully-qualified image URL (avoiding registry enrichment issues in forks).
+        MLRUN_IMAGE="${{ needs.prepare-inputs.outputs.mlrun_docker_registry }}${{ needs.prepare-inputs.outputs.mlrun_docker_repo }}/mlrun:${{ needs.prepare-inputs.outputs.mlrun_docker_tag }}"
+        export MLRUN_DEFAULT_BASE_IMAGE="$MLRUN_IMAGE"
+        export MLRUN_FUNCTION_DEFAULTS__IMAGE_BY_KIND__JOB="$MLRUN_IMAGE"
+        export MLRUN_FUNCTION_DEFAULTS__IMAGE_BY_KIND__SERVING="$MLRUN_IMAGE"
+        export MLRUN_FUNCTION_DEFAULTS__IMAGE_BY_KIND__NUCLIO="$MLRUN_IMAGE"
+        export MLRUN_FUNCTION_DEFAULTS__IMAGE_BY_KIND__REMOTE="$MLRUN_IMAGE"
+        export MLRUN_FUNCTION_DEFAULTS__IMAGE_BY_KIND__MPIJOB="$MLRUN_IMAGE"
+
         # S3 credentials for client-side artifact uploads (SeaweedFS).
         # Read from the s3-credentials K8s secret created by the CE chart, but
         # replace the in-cluster DNS endpoint with a routable ClusterIP address.
