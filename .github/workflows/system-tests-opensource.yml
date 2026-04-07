@@ -296,14 +296,16 @@ jobs:
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_HUB_DOCKER_REGISTRY_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_HUB_DOCKER_REGISTRY_PASSWORD }}
+        GHCR_USERNAME: ${{ github.actor }}
+        GHCR_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
       run: |
         echo "=== Creating K3S registries configuration ==="
-        
+
         # Create the K3S config directory if it doesn't exist
         sudo mkdir -p /etc/rancher/k3s
-        
-        # Create registries.yaml with Docker Hub authentication
-        # This configures containerd to authenticate when pulling from docker.io
+
+        # Create registries.yaml with Docker Hub and GHCR authentication
+        # This configures containerd to authenticate when pulling from docker.io and ghcr.io
         # and sets up a local registry mirror for testing
         sudo tee "/etc/rancher/k3s/registries.yaml" > /dev/null << EOF
         mirrors:
@@ -318,8 +320,12 @@ jobs:
             auth:
               username: ${DOCKER_USERNAME}
               password: ${DOCKER_PASSWORD}
+          "ghcr.io":
+            auth:
+              username: ${GHCR_USERNAME}
+              password: ${GHCR_PASSWORD}
         EOF
-        
+
         echo "✓ Registries configuration created at /etc/rancher/k3s/registries.yaml"
 
 
