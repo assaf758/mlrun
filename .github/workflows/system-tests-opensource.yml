@@ -218,7 +218,11 @@ jobs:
         BASE_REF=$(echo "$PR_JSON" | jq -r '.base.ref')
 
         git fetch origin "${BASE_REF}"
-        git rebase "origin/${BASE_REF}"
+        if ! git rebase "origin/${BASE_REF}"; then
+          echo "::error::Rebase of PR #${{ inputs.pr_number }} onto ${BASE_REF} failed due to conflicts. Please rebase your branch locally and push."
+          git rebase --abort
+          exit 1
+        fi
 
         echo "Rebased onto ${BASE_REF} ($(git rev-parse --short origin/${BASE_REF}))"
 
