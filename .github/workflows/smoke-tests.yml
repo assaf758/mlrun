@@ -156,7 +156,7 @@ jobs:
 
           {
             echo "Smoke Tests: [${{ steps.outcome.outputs.status }}](${RUN_URL}) ${{ steps.outcome.outputs.emoji }}"
-            echo "PR base is \`${MERGE_BASE}\`, which is ${NUM_COMMITS} commits before branch ${BASE_REF} HEAD \`${BASE_SHORT}\`"
+            echo "PR base is \`${MERGE_BASE}\`, which is ${NUM_COMMITS} commits before branch \`${BASE_REF}\` HEAD \`${BASE_SHORT}\`"
           } > comment.md
 
       - name: Post comment to PR
