@@ -131,9 +131,30 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build comment body
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          echo "Smoke Tests: ${{ steps.outcome.outputs.emoji }} [${{ steps.outcome.outputs.status }}](${RUN_URL})" > comment.md
+
+          # Get PR branch SHAs and base branch name
+          PR_JSON=$(curl -sS \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ inputs.pr_number }}")
+          HEAD_SHA=$(echo "$PR_JSON" | jq -r '.head.sha')
+          BASE_SHA=$(echo "$PR_JSON" | jq -r '.base.sha')
+          BASE_REF=$(echo "$PR_JSON" | jq -r '.base.ref')
+
+          # Get merge base (fork point) and commit count between fork point and base HEAD
+          COMPARE_JSON=$(curl -sS \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/compare/${HEAD_SHA}...${BASE_SHA}")
+          MERGE_BASE=$(echo "$COMPARE_JSON" | jq -r '.merge_base_commit.sha' | cut -c1-8)
+          NUM_COMMITS=$(echo "$COMPARE_JSON" | jq -r '.ahead_by')
+          BASE_SHORT=$(echo "$BASE_SHA" | cut -c1-8)
+
+          echo "Smoke Tests: [${{ steps.outcome.outputs.status }}](${RUN_URL}) ${{ steps.outcome.outputs.emoji }}. PR base is \`${MERGE_BASE}\`, which is ${NUM_COMMITS} commits before branch ${BASE_REF} HEAD \`${BASE_SHORT}\`" > comment.md
 
       - name: Post comment to PR
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b
