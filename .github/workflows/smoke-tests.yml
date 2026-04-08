@@ -154,7 +154,10 @@ jobs:
           NUM_COMMITS=$(echo "$COMPARE_JSON" | jq -r '.ahead_by')
           BASE_SHORT=$(echo "$BASE_SHA" | cut -c1-8)
 
-          echo "Smoke Tests: [${{ steps.outcome.outputs.status }}](${RUN_URL}) ${{ steps.outcome.outputs.emoji }}. PR base is \`${MERGE_BASE}\`, which is ${NUM_COMMITS} commits before branch ${BASE_REF} HEAD \`${BASE_SHORT}\`" > comment.md
+          {
+            echo "Smoke Tests: [${{ steps.outcome.outputs.status }}](${RUN_URL}) ${{ steps.outcome.outputs.emoji }}"
+            echo "PR base is \`${MERGE_BASE}\`, which is ${NUM_COMMITS} commits before branch ${BASE_REF} HEAD \`${BASE_SHORT}\`"
+          } > comment.md
 
       - name: Post comment to PR
         uses: thollander/actions-comment-pull-request@24bffb9b452ba05a4f3f77933840a6a841d1b32b
