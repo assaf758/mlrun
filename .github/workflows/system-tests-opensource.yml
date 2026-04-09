@@ -102,6 +102,7 @@ jobs:
       mlrun_version: ${{ steps.computed_params.outputs.mlrun_version }}
       mlrun_version_specifier: ${{ steps.computed_params.outputs.mlrun_version_specifier }}
       runner: ${{ steps.computed_params.outputs.runner }}
+      runner_labels: ${{ steps.computed_params.outputs.runner_labels }}
     steps:
       - uses: actions/checkout@v6
 
@@ -145,15 +146,18 @@ jobs:
       - name: Set computed versions params
         id: computed_params
         run: |
-          # Derive platform tag suffix and build runner
+          # Derive platform tag suffix, build runner, and test runner labels
           if [ "${{ inputs.docker_platform }}" = "linux/arm64" ]; then
             platform_suffix="-arm64"
             runner="ubuntu-24.04-arm"
+            runner_labels="arm64"
           else
             platform_suffix=""
             runner="ubuntu-latest"
+            runner_labels="X64"
           fi
           echo "runner=${runner}" >> $GITHUB_OUTPUT
+          echo "runner_labels=${runner_labels}" >> $GITHUB_OUTPUT
 
           export mlrun_hash=$(echo ${{ steps.git_upstream_info.outputs.mlrun_hash }})
           export ui_hash=$(echo ${{ steps.git_upstream_info.outputs.ui_hash }})
@@ -216,6 +220,7 @@ jobs:
     name: Run System Tests Open Source
     runs-on:
       group: mlrun-ce
+      labels: ${{ needs.prepare-inputs.outputs.runner_labels }}
     needs: [prepare-inputs, build-mlrun]
     if: >-
       always() &&
