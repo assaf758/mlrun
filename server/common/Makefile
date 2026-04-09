@@ -14,6 +14,7 @@
 MLRUN_VERSION ?= unstable
 MLRUN_DOCKER_REGISTRY ?=
 MLRUN_DOCKER_REPO ?= mlrun
+DOCKER_DEFAULT_PLATFORM ?= linux/amd64
 MLRUN_DOCKER_IMAGE_PREFIX := $(if $(MLRUN_DOCKER_REGISTRY),$(strip $(MLRUN_DOCKER_REGISTRY))$(MLRUN_DOCKER_REPO),$(MLRUN_DOCKER_REPO))
 
 GO_VERSION=$(shell grep -m1 'go ' ../go/go.mod | awk '{split($$2,a,"."); print a[1] "." a[2]}')
@@ -43,7 +44,7 @@ PY_TARGET_DIR := ../py/schemas/proto
 schemas-compiler:
 	@echo Building schemas-compiler image
 	docker build \
-		--platform linux/amd64 \
+		--platform $(DOCKER_DEFAULT_PLATFORM) \
 		--file builder/schemas_compiler/docker/Dockerfile \
 		--build-arg GO_VERSION=$(GO_VERSION) \
 		--tag $(MLRUN_DOCKER_IMAGE_PREFIX)/schemas-compiler:latest \
