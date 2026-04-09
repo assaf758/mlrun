@@ -54,6 +54,14 @@ on:
         options:
           - 'true'
           - 'false'
+      docker_platform:
+        description: 'Target Docker image platform'
+        required: false
+        default: 'linux/amd64'
+        type: choice
+        options:
+          - 'linux/amd64'
+          - 'linux/arm64'
 
 jobs:
   build-mlrun:
@@ -66,4 +74,6 @@ jobs:
       version: ${{ needs.prepare-inputs.outputs.version }}
       skip_images: ${{ github.event.inputs.skip_images }}
       build_from_cache: ${{ github.event.inputs.build_from_cache }}
+      docker_platform: ${{ github.event.inputs.docker_platform || 'linux/amd64' }}
+      runner: ${{ (github.event.inputs.docker_platform == 'linux/arm64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     secrets: inherit
