@@ -69,6 +69,10 @@ on:
         description: 'Whether to push built images to cache registry'
         default: true
         type: boolean
+      docker_platform:
+        description: 'Target Docker image platform (e.g. linux/amd64, linux/arm64)'
+        default: 'linux/amd64'
+        type: string
 
 jobs:
   matrix_prep:
@@ -117,6 +121,15 @@ jobs:
     - name: Install curl and jq
       if: runner == 'ubuntu-latest'
       run: sudo apt-get install -y curl jq
+
+    - name: Derive platform tag suffix
+      id: platform
+      run: |
+        if [ "${{ inputs.docker_platform }}" = "linux/arm64" ]; then
+          echo "tag_suffix=-arm64" >> $GITHUB_OUTPUT
+        else
+          echo "tag_suffix=" >> $GITHUB_OUTPUT
+        fi
 
     - name: Extract git hash, ref and latest version
       id: git_info
@@ -220,7 +233,8 @@ jobs:
             MLRUN_DOCKER_REGISTRY=$registry \
             MLRUN_DOCKER_CACHE_FROM_REGISTRY=ghcr.io/ \
             MLRUN_DOCKER_REPO=${{ steps.computed_params.outputs.mlrun_docker_repo }} \
-            MLRUN_VERSION=${{ steps.computed_params.outputs.mlrun_version }} \
+            MLRUN_VERSION=${{ steps.computed_params.outputs.mlrun_version }}${{ steps.platform.outputs.tag_suffix }} \
+            DOCKER_DEFAULT_PLATFORM=${{ inputs.docker_platform }} \
             MLRUN_DOCKER_CACHE_FROM_TAG=${{ steps.docker_cache.outputs.tag }} \
             MLRUN_NO_CACHE=${{ steps.docker_cache.outputs.no_cache }} \
             MLRUN_PUSH_DOCKER_CACHE_IMAGE=${{ steps.docker_cache.outputs.push_cache }} \
@@ -241,7 +255,8 @@ jobs:
             MLRUN_DOCKER_REGISTRY=$registry \
             MLRUN_DOCKER_CACHE_FROM_REGISTRY=ghcr.io/ \
             MLRUN_DOCKER_REPO=${{ steps.computed_params.outputs.mlrun_docker_repo }} \
-            MLRUN_VERSION=unstable \
+            MLRUN_VERSION=unstable${{ steps.platform.outputs.tag_suffix }} \
+            DOCKER_DEFAULT_PLATFORM=${{ inputs.docker_platform }} \
             MLRUN_DOCKER_CACHE_FROM_TAG=${{ steps.docker_cache.outputs.tag }} \
             MLRUN_PYTHON_VERSION=${{ matrix.python-version }} \
             INCLUDE_PYTHON_VERSION_SUFFIX=${{ matrix.include-suffix }} \
@@ -256,6 +271,7 @@ jobs:
         MLRUN_DOCKER_CACHE_FROM_REGISTRY=ghcr.io/ \
         MLRUN_DOCKER_REPO=${{ steps.computed_params.outputs.mlrun_docker_repo }} \
         MLRUN_VERSION=${{ steps.docker_cache.outputs.tag }} \
+        DOCKER_DEFAULT_PLATFORM=${{ inputs.docker_platform }} \
         MLRUN_DOCKER_CACHE_FROM_TAG=${{ steps.docker_cache.outputs.tag }} \
         MLRUN_PUSH_DOCKER_CACHE_IMAGE=${{ inputs.build_to_cache }} \
         MLRUN_PYTHON_VERSION=${{ matrix.python-version }} \
