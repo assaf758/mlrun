@@ -164,7 +164,7 @@ jobs:
           echo "mlrun_hash=$mlrun_hash" >> $GITHUB_OUTPUT
           echo "ui_hash=$ui_hash" >> $GITHUB_OUTPUT
 
-          echo "mlrun_version=$(echo ${{ steps.git_upstream_info.outputs.unstable_version_prefix }}+$mlrun_hash)${platform_suffix}" >> $GITHUB_OUTPUT
+          echo "mlrun_version=$(echo ${{ steps.git_upstream_info.outputs.unstable_version_prefix }}+$mlrun_hash)" >> $GITHUB_OUTPUT
           echo "mlrun_ui_version=${{ steps.git_upstream_info.outputs.unstable_version_prefix }}-$ui_hash" >> $GITHUB_OUTPUT
           echo "mlrun_docker_tag=$(echo ${{ steps.git_upstream_info.outputs.unstable_version_prefix }}-$mlrun_hash)${platform_suffix}" >> $GITHUB_OUTPUT
           
