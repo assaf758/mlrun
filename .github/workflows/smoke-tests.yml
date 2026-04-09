@@ -42,6 +42,14 @@ on:
         options:
           - 'true'
           - 'false'
+      docker_platform:
+        description: 'Target Docker image platform'
+        required: false
+        default: 'linux/amd64'
+        type: choice
+        options:
+          - 'linux/amd64'
+          - 'linux/arm64'
 
 jobs:
   run-smoke-tests:
@@ -52,6 +60,7 @@ jobs:
       pytest_markers: 'not enterprise and smoke'
       clean_resources_in_teardown: ${{ inputs.clean_resources_in_teardown }}
       debug_enabled: ${{ inputs.debug_enabled }}
+      docker_platform: ${{ inputs.docker_platform }}
     secrets: inherit
 
   post-results:
