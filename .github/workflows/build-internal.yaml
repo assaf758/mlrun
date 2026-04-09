@@ -110,7 +110,17 @@ jobs:
       if: inputs.pr_number != ''
       with:
         fetch-depth: 0
-        ref: refs/pull/${{ inputs.pr_number }}/merge
+        ref: refs/pull/${{ inputs.pr_number }}/head
+
+    - name: Rebase PR onto workflow ref
+      if: inputs.pr_number != ''
+      run: |
+        git fetch origin "${{ github.ref_name }}"
+        if ! git rebase "origin/${{ github.ref_name }}"; then
+          echo "::error::Rebase of PR #${{ inputs.pr_number }} onto ${{ github.ref_name }} failed due to conflicts."
+          git rebase --abort
+          exit 1
+        fi
 
     # since github-actions gives us 14G only, and fills it up with some garbage
     - name: Freeing up disk space
