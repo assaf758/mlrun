@@ -46,6 +46,14 @@ on:
         options:
           - 'true'
           - 'false'
+      docker_platform:
+        description: 'Target Docker image platform'
+        required: false
+        default: 'linux/amd64'
+        type: choice
+        options:
+          - 'linux/amd64'
+          - 'linux/arm64'
    workflow_call:
       inputs:
         pr_number:
@@ -64,6 +72,10 @@ on:
           type: string
           required: false
           default: 'false'
+        docker_platform:
+          type: string
+          required: false
+          default: 'linux/amd64'
 env:
   NAMESPACE: mlrun
   MLRUN_API_NODE_PORT: 30070
@@ -89,6 +101,7 @@ jobs:
       mlrun_system_tests_clean_resources: ${{ steps.computed_params.outputs.mlrun_system_tests_clean_resources }}
       mlrun_version: ${{ steps.computed_params.outputs.mlrun_version }}
       mlrun_version_specifier: ${{ steps.computed_params.outputs.mlrun_version_specifier }}
+      runner: ${{ steps.computed_params.outputs.runner }}
     steps:
       - uses: actions/checkout@v6
 
@@ -132,14 +145,24 @@ jobs:
       - name: Set computed versions params
         id: computed_params
         run: |
+          # Derive platform tag suffix and build runner
+          if [ "${{ inputs.docker_platform }}" = "linux/arm64" ]; then
+            platform_suffix="-arm64"
+            runner="ubuntu-24.04-arm"
+          else
+            platform_suffix=""
+            runner="ubuntu-latest"
+          fi
+          echo "runner=${runner}" >> $GITHUB_OUTPUT
+
           export mlrun_hash=$(echo ${{ steps.git_upstream_info.outputs.mlrun_hash }})
           export ui_hash=$(echo ${{ steps.git_upstream_info.outputs.ui_hash }})
           echo "mlrun_hash=$mlrun_hash" >> $GITHUB_OUTPUT
           echo "ui_hash=$ui_hash" >> $GITHUB_OUTPUT
 
-          echo "mlrun_version=$(echo ${{ steps.git_upstream_info.outputs.unstable_version_prefix }}+$mlrun_hash)" >> $GITHUB_OUTPUT
+          echo "mlrun_version=$(echo ${{ steps.git_upstream_info.outputs.unstable_version_prefix }}+$mlrun_hash)${platform_suffix}" >> $GITHUB_OUTPUT
           echo "mlrun_ui_version=${{ steps.git_upstream_info.outputs.unstable_version_prefix }}-$ui_hash" >> $GITHUB_OUTPUT
-          echo "mlrun_docker_tag=$(echo ${{ steps.git_upstream_info.outputs.unstable_version_prefix }}-$mlrun_hash)" >> $GITHUB_OUTPUT
+          echo "mlrun_docker_tag=$(echo ${{ steps.git_upstream_info.outputs.unstable_version_prefix }}-$mlrun_hash)${platform_suffix}" >> $GITHUB_OUTPUT
           
           # Determine PR number for version specifier
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -185,6 +208,8 @@ jobs:
       # and use --override-mlrun-jupyter-image when patching mlrun ce
       skip_images: test,mlrun-gpu,jupyter
       pr_number: ${{ inputs.pr_number }}
+      runner: ${{ needs.prepare-inputs.outputs.runner }}
+      docker_platform: ${{ inputs.docker_platform || 'linux/amd64' }}
     secrets: inherit
 
   run-system-tests-opensource-ci:
