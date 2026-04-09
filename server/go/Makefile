@@ -14,6 +14,7 @@
 MLRUN_VERSION ?= unstable
 MLRUN_DOCKER_REGISTRY ?=
 MLRUN_DOCKER_REPO ?= mlrun
+DOCKER_DEFAULT_PLATFORM ?= linux/amd64
 MLRUN_DOCKER_TAG ?= $(shell echo "$(MLRUN_VERSION)" | sed -E 's/\+/\-/g')
 MLRUN_DOCKER_IMAGE_PREFIX := $(if $(MLRUN_DOCKER_REGISTRY),$(strip $(MLRUN_DOCKER_REGISTRY))$(MLRUN_DOCKER_REPO),$(MLRUN_DOCKER_REPO))
 
@@ -55,8 +56,10 @@ print-docker-images:
 log-collector: compile-schemas
 	@echo Building log-collector image
 	docker build \
+		--platform $(DOCKER_DEFAULT_PLATFORM) \
 		--file services/logcollector/cmd/docker/Dockerfile \
 		--build-arg GO_VERSION=$(GO_VERSION) \
+		--build-arg DOCKER_DEFAULT_PLATFORM=$(DOCKER_DEFAULT_PLATFORM) \
 		--tag $(LOG_COLLECTOR_IMAGE_NAME) \
 		.
 
@@ -71,7 +74,7 @@ pull-log-collector:
 
 .PHONY: schemas-compiler
 schemas-compiler:
-	$(MAKE) -C ../common schemas-compiler
+	$(MAKE) -C ../common schemas-compiler DOCKER_DEFAULT_PLATFORM=$(DOCKER_DEFAULT_PLATFORM)
 
 #
 # Protobuf

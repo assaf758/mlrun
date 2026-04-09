@@ -13,14 +13,16 @@
 # limitations under the License.
 
 ARG GO_VERSION=1.25
+ARG DOCKER_DEFAULT_PLATFORM=linux/amd64
 
-FROM gcr.io/iguazio/golang:${GO_VERSION} AS build-binary
+FROM --platform=${DOCKER_DEFAULT_PLATFORM} golang:${GO_VERSION} AS build-binary
 
 RUN mkdir /app
 WORKDIR /app
 
 # Build stages requires defining GO_VERSION again
 ARG GO_VERSION
+ARG DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 # copy `go.mod` for definitions and `go.sum` to invalidate the next layer
 # in case of a change in the dependencies
@@ -34,7 +36,7 @@ COPY proto ./proto
 
 # build
 RUN GOOS=linux \
-    GOARCH=amd64 \
+    GOARCH=$(echo ${DOCKER_DEFAULT_PLATFORM} | cut -d/ -f2) \
     CGO_ENABLED=0 \
     go build -a -installsuffix cgo -ldflags="-s -w" -o logcollector ./services/logcollector/cmd/main.go
 
