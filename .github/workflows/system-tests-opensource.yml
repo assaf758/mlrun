@@ -270,7 +270,8 @@ jobs:
         sudo apt-get update
         sudo apt-get install --yes build-essential libpq-dev libffi-dev libssl-dev python3-dev pkg-config curl jq make
         # yq is required by jupyterhub/action-k3s-helm (v4.1.0+) for calico setup
-        sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+        YQ_ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+        sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH}
         sudo chmod +x /usr/local/bin/yq
         uv venv venv --seed --clear
         source venv/bin/activate
